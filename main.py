@@ -2,7 +2,6 @@ from bs4 import BeautifulSoup
 import urllib.request
 import requests
 import json
-import time
 import os
 from dotenv import load_dotenv
 
@@ -50,17 +49,15 @@ if __name__ == '__main__':
     if not os.path.exists('image'):
         os.makedirs('image')
 
-    parse(os.getenv('URL') + os.getenv('AUCTION'), os.getenv('PAGE'), 13)
+    parse(os.getenv('URL') + os.getenv('AUCTION'), os.getenv('PAGE'), int(os.getenv('NUM')))
 
     with open('data.json', 'w', encoding='utf-8') as outfile:
         json.dump(data, outfile, ensure_ascii=False)
 
     for j, el in enumerate(data['data']):
         try:
-            time.sleep(0.3)
             urllib.request.urlretrieve(os.getenv('URL') + el['imgUrl'], 'image/Лот №{}.png'.format(j + 1))
             print('save {}'.format(el['lot']))
         except:
-            time.sleep(0.3)
             urllib.request.urlretrieve(os.getenv('URL') + el['imgUrl'], 'image/Лот №{}.png'.format(j + 1))
             print('save {}'.format(el['lot']))
