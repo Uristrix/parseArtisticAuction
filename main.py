@@ -45,10 +45,9 @@ def parse(url, auction, page, num):
             temp['sales'] = soup_lot.find('div', {'class': 'sticker_recommend'}).text if \
                 soup_lot.find('div', {'class': 'sticker_recommend'}) is not None else ' '
 
-            img = soup_lot.find('ul', {'class': 'slides'}).findAll('img')
+            img = soup_lot.find('ul', {'class': 'slides'}).findAll('a')
             for j in range(len(img)):
-                img[j] = img[j]['src']
-
+                img[j] = img[j]['href']
             temp['img'] = img
 
             data['data'].append(temp)
