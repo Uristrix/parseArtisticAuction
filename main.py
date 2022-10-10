@@ -4,6 +4,7 @@ import requests
 import json
 import xlsxwriter
 import os
+import re
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -16,8 +17,8 @@ header_url = {'User-Agent': 'Mozilla/5.0 (Windows NT 6.1) '
                             'Chrome/41.0.2228.0 '
                             'Safari/537.36'}
 classification = [
-    {'class': '1.1', 'words': ['картина', 'картины']},
-    {'class': '1.2', 'words': ['рисунок', 'рисунки']},
+    {'class': '1.1', 'words': ['картина', 'картины', 'масло']},
+    {'class': '1.2', 'words': ['рисунок', 'рисунки', 'акварель', 'гуашь', 'карандаш']},
     {'class': '1.3', 'words': ['икона', 'иконы']},
     {'class': '1.4', 'words': ['печатная графика', 'печатные графики']},
     {'class': '1.5', 'words': ['плакат', 'плакаты']},
@@ -40,6 +41,29 @@ classification = [
     {'class': '4.7', 'words': ["бижутерия", "бижутерии"]},
     {'class': '4.8', 'words': ["камни", "камень"]},
     {'class': '4.9', 'words': ["мужские украшения", "мужское украшение"]},
+    {'class': '5.1', 'words': ["монета", "монеты"]},
+    {'class': '5.2', 'words': ["деньги"]},
+    {'class': '5.3', 'words': ["марки", "марка"]},
+    {'class': '6', 'words': ["книги", "карты", "рукописи", "книга", "карта", "рукопись"]},
+    {'class': '7.1', 'words': ["реклама", "бумага", "открытки", "карточки", "рекламы", "бумаги", "открытка", "карточка"]},
+    {'class': '7.2', 'words': ["автограф", "афиографы"]},
+    {'class': '7.3', 'words': ["армия", "война"]},
+    {'class': '7.3.1', 'words': ["награда", "награды"]},
+    {'class': '7.3.2', 'words': ["оружие"]},
+    {'class': '7.3.3', 'words': ["форма и аксессуары"]},
+    {'class': '7.4', 'words': ["часы"]},
+    {'class': '7.5', 'words': ["окаменелости", "минералы", "окаменелость", "минерал"]},
+    {'class': '7.6', 'words': ["научные приборы", "музыкальные инструменты"]},
+    {'class': '7.7', 'words': ["кутюр", "мода"]},
+    {'class': '7.8', 'words': ["спорт", "рыбалка", "охота"]},
+    {'class': '7.9', 'words': ["электронника"]},
+    {'class': '7.10', 'words': ["исторические", "политические", "исторический", "политический"]},
+    {'class': '8.1', 'words': ["стол", "столы"]},
+    {'class': '8.2', 'words': ["стулья", "кресла", 'диваны', 'скамейки', "стул", "кресло", 'диван', 'скамейка']},
+    {'class': '8.3', 'words': ["декор", "аксессуар", "зеркало", "зеркала"]},
+    {'class': '8.4', 'words': ["лампа", "лампы", "люстра", "люстры"]},
+    {'class': '8.5', 'words': ["ковёр", "ковры", "коврик", "коврики"]},
+    {'class': '8.6', 'words': ["кровать", "кровати"]},
 ]
 
 def parse(url, auction, page, num):
@@ -84,7 +108,6 @@ def parse(url, auction, page, num):
 
             data['data'].append(temp)
             print(temp)
-        break
 
 
 def create_xlsx():
@@ -109,12 +132,12 @@ def create_xlsx():
     })
 
     # Ширина колонок
-    for i, el in enumerate([15 for i in range(8)] + [50, 15, 20]):
+    for i, el in enumerate([15 for i in range(8)] + [50, 15, 20, 50]):
         worksheet.set_column(i, i, el)
 
     # Заголовок
-    header = ['Лот', 'класс/подкласс', 'автор', 'регион', 'наимнование', 'год', 'цена', 'TTX', 'описание', 'фото', 'Проданные лоты']
-    print(header)
+    header = ['Лот', 'класс/подкласс', 'автор', 'регион', 'наимнование', 'год', 'цена', 'TTX', 'описание', 'фото', 'Проданные лоты', 'доп...']
+
     for i, el in enumerate(header):
         worksheet.write(0, i, el, style1)
 
@@ -124,8 +147,10 @@ def create_xlsx():
         while ' (?)' in descr:
             descr.remove(' (?)')
 
-        worksheet.write(i + 1, 0, el['lot'], style2)                                        # Лот
+        # Лот
+        worksheet.write(i + 1, 0, el['lot'], style2)
 
+        # Класс
         class_ = []
         info_ = '\n'.join(el['info']).lower()
         for t1 in classification:
@@ -134,20 +159,54 @@ def create_xlsx():
                     class_.append(t1['class'])
                     break
 
-        worksheet.write(i + 1, 1, '\n'.join(class_), style2)                                # Класс
-        worksheet.write(i + 1, 2, descr[0], style2)                                         # Автор
-        worksheet.write(i + 1, 3, descr[1] if len(descr) >= 4 else ' ', style2)             # Регион
-        worksheet.write(i + 1, 4, descr[2] if len(descr) >= 4 else descr[1], style2)        # Наименование
-        worksheet.write(i + 1, 5, descr[len(descr) - 1], style2)                            # Год
-        worksheet.write(i + 1, 6, el['price'].replace(' ₽', ''), style2)                    # Цена
-        worksheet.write(i + 1, 7, el['info'][0], style2)                                    # ттх
-        worksheet.write(i + 1, 8, '\n'.join(el['info']), style2)                            # Описание
+        worksheet.write(i + 1, 1, '\n'.join(class_), style2)
+
+        # Автор
+        worksheet.write(i + 1, 2, descr[0], style2)
+
+        # Год
+        worksheet.write(i + 1, 5, descr[len(descr) - 1], style2)
+
+        descr = descr[1:-1]
+
+        # Регион
+        if len(descr) >= 2:
+            worksheet.write(i + 1, 3, descr[0], style2)
+            descr = descr[1:]
+        else:
+            worksheet.write(i + 1, 3, '', style2)
+
+        # Наименование
+        worksheet.write(i + 1, 4, ''.join(descr), style2)
+
+        # Цена
+        worksheet.write(i + 1, 6, el['price'].replace(' ₽', ''), style2)
+
+        # ттх
+        worksheet.write(i + 1, 7, re.sub(r'\.\s$|\.$', '', el['info'][0]), style2)
+
+        # Описание
+        info = '\n'.join(el['info'])
+        info = info.replace(el['info'][0], '')
+        if len(el['img']) != 0:
+            art = el['img'][0]['article']
+            art = re.sub(r'-[а-я]$', '', art)
+            info = info.replace(art, '')
+
+        worksheet.write(i + 1, 8, info, style2)
+
+        # фото
         lst = []
         for x in range(len(el['img'])):
             lst.append(el['img'][x]['article'])
 
-        worksheet.write(i + 1, 9, '\n'.join(lst), style2)                                   # фото
-        worksheet.write(i + 1, 10, el['sales'], style2)                                     # Проданные лоты
+        worksheet.write(i + 1, 9, '\n'.join(lst), style2)
+
+        # Проданные лоты
+        worksheet.write(i + 1, 10, el['sales'].replace(' ₽', ''), style2)
+
+        #description
+        worksheet.write(i + 1, 11, el['description'], style2)
 
     workbook.close()
 
@@ -165,21 +224,21 @@ def create_image():
         try:
             for j, el2 in enumerate(el['img']):
                 try:
-                    name = el['article'].replace('/', '-')
+                    name = el2['article'].replace('/', '-')
                     if os.path.exists('image/{}.png'.format(name)):
-                        name += el['lot']
+                        name += " " + el['lot']
 
                     urllib.request.urlretrieve(os.getenv('URL') + el2['url'], 'image/{}.png'.format(name))
-                    print('save {}_{}'.format(el['lot'], j + 1))
+                    print('save {}_{} image/{}.png'.format(el['lot'], j + 1, name))
                 except:
                     continue
 
         except:
             for j, el2 in enumerate(el['img']):
                 try:
-                    name = el['article'].replace('/', '-')
+                    name = el2['article'].replace('/', '-')
                     if os.path.exists('image/{}.png'.format(name)):
-                        name += el['lot']
+                        name += " " + el['lot']
 
                     urllib.request.urlretrieve(os.getenv('URL') + el2['url'], 'image/{}.png'.format(name))
                     print('save {}_{}'.format(el['lot'], j + 1))
