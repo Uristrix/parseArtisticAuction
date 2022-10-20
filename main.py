@@ -17,10 +17,10 @@ header_url = {'User-Agent': 'Mozilla/5.0 (Windows NT 6.1) '
                             'Chrome/41.0.2228.0 '
                             'Safari/537.36'}
 classification = [
-    {'class': '1.1', 'words': ['картина', 'картины', 'масло']},
-    {'class': '1.2', 'words': ['рисунок', 'рисунки', 'акварель', 'гуашь', 'карандаш']},
+    {'class': '1.1', 'words': ['картина', 'картины', 'темпера', 'холст', 'акрил']},
+    {'class': '1.2', 'words': ['рисунок', 'рисунки', 'акварель', 'гуашь', 'карандаш', 'картон', 'бумага']},
     {'class': '1.3', 'words': ['икона', 'иконы']},
-    {'class': '1.4', 'words': ['печатная графика', 'печатные графики']},
+    {'class': '1.4', 'words': ['печатная графика', 'печатные графики', 'шелкография', 'ксилография']},
     {'class': '1.5', 'words': ['плакат', 'плакаты']},
     {'class': '1.6', 'words': ['фотография', 'фотографии']},
     {'class': '2.1', 'words': ["фарфор", "стекло", "керамика", "фаянс"]},
@@ -45,7 +45,7 @@ classification = [
     {'class': '5.2', 'words': ["деньги"]},
     {'class': '5.3', 'words': ["марки", "марка"]},
     {'class': '6', 'words': ["книги", "карты", "рукописи", "книга", "карта", "рукопись"]},
-    {'class': '7.1', 'words': ["реклама", "бумага", "открытки", "карточки", "рекламы", "бумаги", "открытка", "карточка"]},
+    {'class': '7.1', 'words': ["реклама", "открытки", "карточки", "рекламы", "бумаги", "открытка", "карточка"]},
     {'class': '7.2', 'words': ["автограф", "афиографы"]},
     {'class': '7.3', 'words': ["армия", "война"]},
     {'class': '7.3.1', 'words': ["награда", "награды"]},
@@ -60,7 +60,7 @@ classification = [
     {'class': '7.10', 'words': ["исторические", "политические", "исторический", "политический"]},
     {'class': '8.1', 'words': ["стол", "столы"]},
     {'class': '8.2', 'words': ["стулья", "кресла", 'диваны', 'скамейки', "стул", "кресло", 'диван', 'скамейка']},
-    {'class': '8.3', 'words': ["декор", "аксессуар", "зеркало", "зеркала"]},
+    {'class': '8.3', 'words': ["декор", "аксессуар", "зеркало", "зеркала", 'дерево', 'гипс']},
     {'class': '8.4', 'words': ["лампа", "лампы", "люстра", "люстры"]},
     {'class': '8.5', 'words': ["ковёр", "ковры", "коврик", "коврики"]},
     {'class': '8.6', 'words': ["кровать", "кровати"]},
@@ -97,7 +97,10 @@ def parse(url, auction, page, num):
                 soup_lot.find('div', {'class': 'sticker_recommend'}) is not None else ' '
 
             temp['article'] = el.find('span', {'class': 'article'}).find('span').text \
-                if el.find('span', {'class': 'article'}) is not None else temp['lot']
+                if el.find('span', {'class': 'article'}) is not None \
+                else list(filter(None, soup_lot.find('div', {'class': '-previewtext'}).text.split('\n')))[-1] \
+                if len(list(filter(None, soup_lot.find('div', {'class': '-previewtext'}).text.split('\n')))[-1]) < 15 \
+                else temp['lot']
 
             img = soup_lot.find('ul', {'class': 'slides'}).findAll('a')
             img_temp = []
@@ -132,11 +135,11 @@ def create_xlsx():
     })
 
     # Ширина колонок
-    for i, el in enumerate([15 for i in range(8)] + [50, 15, 20, 50]):
+    for i, el in enumerate([15 for i in range(8)] + [50, 15, 20, 20, 50]):
         worksheet.set_column(i, i, el)
 
     # Заголовок
-    header = ['Лот', 'класс/подкласс', 'автор', 'регион', 'наимнование', 'год', 'цена', 'TTX', 'описание', 'фото', 'Проданные лоты', 'доп...']
+    header = ['лот', 'класс/подкласс', 'автор', 'регион', 'наимнование', 'год', 'цена', 'TTX', 'описание', 'фото', 'проданные лоты', 'ключевые слова', 'доп...']
 
     for i, el in enumerate(header):
         worksheet.write(0, i, el, style1)
@@ -149,17 +152,6 @@ def create_xlsx():
 
         # Лот
         worksheet.write(i + 1, 0, el['lot'], style2)
-
-        # Класс
-        class_ = []
-        info_ = '\n'.join(el['info']).lower()
-        for t1 in classification:
-            for t2 in t1['words']:
-                if info_.find(t2) != -1:
-                    class_.append(t1['class'])
-                    break
-
-        worksheet.write(i + 1, 1, '\n'.join(class_), style2)
 
         # Автор
         worksheet.write(i + 1, 2, descr[0], style2)
@@ -183,7 +175,19 @@ def create_xlsx():
         worksheet.write(i + 1, 6, el['price'].replace(' ₽', ''), style2)
 
         # ттх
-        worksheet.write(i + 1, 7, re.sub(r'\.\s$|\.$', '', el['info'][0]), style2)
+        ttx = re.sub(r'\.\s$|\.$', '', el['info'][0])
+        worksheet.write(i + 1, 7, ttx, style2)
+
+        # Класс
+        class_ = []
+        info_ = ttx.lower()
+        for t1 in classification:
+            for t2 in t1['words']:
+                if info_.find(t2) != -1:
+                    class_.append(t1['class'])
+                    break
+
+        worksheet.write(i + 1, 1, '\n'.join(class_), style2)
 
         # Описание
         info = '\n'.join(el['info'])
@@ -198,15 +202,18 @@ def create_xlsx():
         # фото
         lst = []
         for x in range(len(el['img'])):
-            lst.append(el['img'][x]['article'])
+            lst.append(el['img'][x]['article'].replace('/', '-'))
 
         worksheet.write(i + 1, 9, '\n'.join(lst), style2)
 
         # Проданные лоты
         worksheet.write(i + 1, 10, el['sales'].replace(' ₽', ''), style2)
 
-        #description
-        worksheet.write(i + 1, 11, el['description'], style2)
+        # Ключевые слова
+        worksheet.write(i + 1, 11, el['info'][0].split('.')[0], style2)
+
+        # description
+        worksheet.write(i + 1, 12, el['description'], style2)
 
     workbook.close()
 
@@ -250,4 +257,4 @@ if __name__ == '__main__':
     parse(os.getenv('URL'), os.getenv('AUCTION'), os.getenv('PAGE'), int(os.getenv('NUM')))
     create_json()
     create_xlsx()
-    create_image()
+    # create_image()
