@@ -67,6 +67,7 @@ classification = [
 ]
 
 def parse(url, auction, page, num):
+    l = 0
     for i in range(1, num + 1):
         html = requests.get(url + auction + page + str(i)).text
 
@@ -76,16 +77,14 @@ def parse(url, auction, page, num):
 
         for el in elems:
             temp = {}
-
-            lot = el.find('a', {'class': 'btn-default'}, href=True)['href']
-
+            lot = el.find('div', {'class': 'title'}).find('a', href=True)['href']
             _html = requests.get(url + lot)
             soup_lot = BeautifulSoup(_html.text, 'html.parser')
 
-            temp['lot'] = soup_lot.find('strong').text if soup_lot.find('strong') is not None else ' '
+            l += 1
+            temp['lot'] = soup_lot.find('strong').text if soup_lot.find('strong') is not None else "Лот №{}".format(l)
 
-            temp['description'] = soup_lot.find('h1', {'class': 'h2'}).text.replace(temp['lot'] + ' ', '').replace('\n',
-                                                                                                                   '')
+            temp['description'] = soup_lot.find('h1', {'class': 'h2'}).text.replace(temp['lot'] + ' ', '').replace('\n','') if soup_lot.find('h1', {'class': 'h2'}) is not None else ' '
 
             temp['price'] = soup_lot.find('span', {'class': 'price_val'}).text if \
                 soup_lot.find('span', {'class': 'price_val'}) is not None else ' '
@@ -111,7 +110,6 @@ def parse(url, auction, page, num):
 
             data['data'].append(temp)
             print(temp)
-
 
 def create_xlsx():
     workbook = xlsxwriter.Workbook('file.xlsx')
@@ -257,4 +255,4 @@ if __name__ == '__main__':
     parse(os.getenv('URL'), os.getenv('AUCTION'), os.getenv('PAGE'), int(os.getenv('NUM')))
     create_json()
     create_xlsx()
-    # create_image()
+    create_image()
